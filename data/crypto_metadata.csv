@@ -1,0 +1,7 @@
+symbol,asset_name,category
+BTCUSDT,Bitcoin,Layer_1
+ETHUSDT,Ethereum,Layer_1
+SOLUSDT,Solana,Layer_1
+BNBUSDT,Binance_Coin,Exchange_Token
+ADAUSDT,Cardano,Layer_1
+XRPUSDT,Ripple,Payments
