@@ -1,0 +1,161 @@
+{
+  "title": "Crypto-Stream Dashboard",
+  "uid": "crypto-stream-v1",
+  "description": "Real-time cryptocurrency aggregations powered by Kafka + Spark + Cassandra.",
+  "tags": ["crypto", "realtime"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Average Asset Price (Log Scale)",
+      "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+          "rawQuery": true,
+          "queryType": "query",
+          "target": "SELECT window_start as time, average_price as value, symbol as metric FROM real_time_aggregates WHERE window_start >= ${__from} AND window_start <= ${__to} ALLOW FILTERING",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "time" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["metric"], "keepFields": false } },
+        { "id": "renameByRegex", "options": { "regex": ".*value (.*)", "renamePattern": "$1" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2,
+            "fillOpacity": 10, "showPoints": "never", "spanNulls": true,
+            "scaleDistribution": { "type": "log", "log": 10 },
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["last", "max", "min"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Trading Volume per Asset",
+      "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+          "rawQuery": true,
+          "queryType": "query",
+          "target": "SELECT window_start as time, total_volume as value, symbol as metric FROM real_time_aggregates WHERE window_start >= ${__from} AND window_start <= ${__to} ALLOW FILTERING",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "time" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["metric"], "keepFields": false } },
+        { "id": "renameByRegex", "options": { "regex": ".*value (.*)", "renamePattern": "$1" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60,
+            "showPoints": "never", "spanNulls": false,
+            "scaleDistribution": { "type": "linear" },
+            "stacking": { "group": "A", "mode": "none" }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Price Swing % (Anomaly Threshold: 1.5%)",
+      "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        {
+          "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+          "rawQuery": true,
+          "queryType": "query",
+          "target": "SELECT window_start as time, price_swing_pct as value, symbol as metric FROM real_time_aggregates WHERE window_start >= ${__from} AND window_start <= ${__to} ALLOW FILTERING",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        { "id": "sortBy", "options": { "fields": [{ "displayName": "time" }] } },
+        { "id": "partitionByValues", "options": { "fields": ["metric"], "keepFields": false } },
+        { "id": "renameByRegex", "options": { "regex": ".*value (.*)", "renamePattern": "$1" } }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2,
+            "fillOpacity": 20, "showPoints": "never", "spanNulls": true,
+            "scaleDistribution": { "type": "linear" },
+            "thresholdsStyle": { "mode": "line" }
+          },
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1.5 }]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "calcs": ["max"], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Anomaly Alert Feed",
+      "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 18 },
+      "targets": [
+        {
+          "datasource": { "type": "hadesarchitect-cassandra-datasource", "uid": "cassandra-datasource" },
+          "rawQuery": true,
+          "queryType": "query",
+          "target": "SELECT window_start as time, symbol as metric, average_price as value FROM real_time_aggregates WHERE window_start >= ${__from} AND window_start <= ${__to} ALLOW FILTERING",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" } } },
+        "overrides": []
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "time" }]
+      }
+    }
+  ]
+}
