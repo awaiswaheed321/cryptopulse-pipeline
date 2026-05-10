@@ -1,0 +1,94 @@
+{
+  "title": "Crypto-Stream: Real-Time Asset Pricing (Log Scale)",
+  "uid": "crypto-prices-v1",
+  "description": "Aggregated real-time pricing data for BTC, ETH, SOL, BNB, ADA, and XRP. Data is sourced from the Binance API, processed via Spark Streaming, and persisted in Cassandra. Visualized on a logarithmic scale to compare assets across different price magnitudes.",
+  "tags": ["crypto", "realtime"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-3h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Real-Time Asset Prices",
+      "description": "Aggregated real-time pricing data for BTC, ETH, SOL, BNB, ADA, and XRP. Data is sourced from the Binance API, processed via Spark Streaming, and persisted in Cassandra. Visualized on a logarithmic scale to compare assets across different price magnitudes.",
+      "datasource": {
+        "type": "hadesarchitect-cassandra-datasource",
+        "uid": "cassandra-datasource"
+      },
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "datasource": {
+            "type": "hadesarchitect-cassandra-datasource",
+            "uid": "cassandra-datasource"
+          },
+          "queryType": "query",
+          "rawQuery": true,
+          "target": "SELECT window_start as time, average_price as value, symbol as metric FROM real_time_aggregates WHERE window_start >= ${__from} AND window_start <= ${__to} ALLOW FILTERING",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "sortBy",
+          "options": { "fields": [{ "displayName": "time" }] }
+        },
+        {
+          "id": "partitionByValues",
+          "options": { "fields": ["metric"], "keepFields": false }
+        },
+        {
+          "id": "renameByRegex",
+          "options": { "regex": ".*value (.*)", "renamePattern": "$1" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 3,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "showPoints": "auto",
+            "spanNulls": true,
+            "scaleDistribution": { "type": "log", "log": 10 },
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "insertNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" },
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      }
+    }
+  ]
+}
