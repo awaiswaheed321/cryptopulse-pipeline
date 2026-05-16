@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# Pass --fresh to wipe Spark checkpoints and force a cold start.
+# Without this flag, the pipeline resumes from the last committed Kafka offset.
+FRESH_START=false
+for arg in "$@"; do
+    [[ "$arg" == "--fresh" ]] && FRESH_START=true
+done
+
 echo "Detecting Java home for Spark compatibility..."
 if [[ "$(uname)" == "Darwin" ]]; then
     export JAVA_HOME="$(/usr/libexec/java_home 2>/dev/null)"
@@ -24,6 +31,13 @@ docker exec kafka kafka-topics \
   --partitions 3 \
   --replication-factor 1
 
+echo "Waiting for Cassandra to be ready..."
+until [ "$(docker inspect --format='{{.State.Health.Status}}' cassandra 2>/dev/null)" = "healthy" ]; do
+    echo "  Cassandra not ready yet, retrying in 5s..."
+    sleep 5
+done
+echo "Cassandra is ready."
+
 echo "Initializing Cassandra Schema..."
 docker exec -i cassandra cqlsh < src/cassandra/schema.cql
 
@@ -39,8 +53,12 @@ export HDFS_NAMENODE="${NAMENODE_IP}:9000"
 echo "HDFS_NAMENODE set to $HDFS_NAMENODE"
 echo "DATANODE_IP set to $DATANODE_IP"
 
-echo "Clearing stale Spark checkpoints..."
-rm -rf /tmp/spark_checkpoints_crypto
+if [ "$FRESH_START" = true ]; then
+    echo "Clearing Spark checkpoints for fresh start..."
+    rm -rf /tmp/spark_checkpoints_crypto
+else
+    echo "Resuming from existing Spark checkpoints (run with --fresh to start clean)."
+fi
 
 echo "Starting Binance Producer..."
 python -m src.ingestion.binance_producer &

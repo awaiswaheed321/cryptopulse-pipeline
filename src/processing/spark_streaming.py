@@ -1,6 +1,6 @@
 import os
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, from_json, window, avg, sum as spark_sum, max as spark_max, min as spark_min, when 
+from pyspark.sql.functions import col, from_json, window, avg, sum as spark_sum, max as spark_max, min as spark_min, when, lit
 from pyspark.sql.types import DoubleType
 from dotenv import load_dotenv
 
@@ -47,7 +47,8 @@ def process_stream():
     schema = get_binance_schema()
     parsed_df = raw_df.selectExpr("CAST(value AS STRING)") \
         .select(from_json(col("value"), schema).alias("data")) \
-        .select("data.*")
+        .select("data.*") \
+        .filter(col("s").isNotNull())  # Drop non-trade frames (heartbeats, subscription confirmations)
 
     # TYPE CASTING
     cleaned_df = parsed_df \
@@ -72,11 +73,16 @@ def process_stream():
         .drop("window")
 
     # ANOMALY DETECTION (Streaming-Safe Math)
-    # Calculate the % swing between the highest and lowest price within the 60 seconds
+    # Calculate the % swing between the highest and lowest price within the 60 seconds.
+    # Guard against low_price=0 (malformed trade data) to avoid NaN/Infinity in Cassandra.
     anomaly_df = final_df \
-        .withColumn("price_swing_pct", ((col("high_price") - col("low_price")) / col("low_price")) * 100) \
-        .withColumn("is_anomaly", 
-            when(col("price_swing_pct") > 1.5, True) # If price swings > 1.5% in 60s, flag True
+        .withColumn("price_swing_pct",
+            when(col("low_price") > 0,
+                ((col("high_price") - col("low_price")) / col("low_price")) * 100
+            ).otherwise(lit(0.0))
+        ) \
+        .withColumn("is_anomaly",
+            when(col("price_swing_pct") > 1.5, True)  # If price swings > 1.5% in 60s, flag True
             .otherwise(False)
         )
     
