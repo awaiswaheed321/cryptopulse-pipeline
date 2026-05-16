@@ -60,7 +60,7 @@ if __name__ == "__main__":
     )
 
     try:
-        ws.run_forever()
+        ws.run_forever(ping_interval=20, ping_timeout=10)
     finally:
         # Only reached when run_forever() exits (process shutdown, not a reconnect)
         publisher.close()

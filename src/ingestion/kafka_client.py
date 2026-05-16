@@ -14,8 +14,7 @@ class CryptoKafkaPublisher:
         self.topic = os.getenv('KAFKA_TOPIC')
 
         if not broker or not self.topic:
-            logger.error("CRITICAL: Missing Kafka environment variables.")
-            exit(1)
+            raise RuntimeError("Missing KAFKA_BROKER or KAFKA_TOPIC environment variables.")
 
         try:
             self.producer = KafkaProducer(
@@ -24,8 +23,7 @@ class CryptoKafkaPublisher:
             )
             logger.info(f"Connected to Kafka broker at {broker}")
         except Exception as e:
-            logger.error(f"Failed to connect to Kafka: {e}")
-            exit(1)
+            raise RuntimeError(f"Failed to connect to Kafka broker at {broker}: {e}") from e
 
     def publish(self, data: dict):
         """Sends a dictionary payload to the configured Kafka topic."""

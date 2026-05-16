@@ -7,6 +7,8 @@ for arg in "$@"; do
     [[ "$arg" == "--fresh" ]] && FRESH_START=true
 done
 
+set -e  # Abort immediately if any setup command fails
+
 echo "Detecting Java home for Spark compatibility..."
 if [[ "$(uname)" == "Darwin" ]]; then
     export JAVA_HOME="$(/usr/libexec/java_home 2>/dev/null)"
