@@ -84,6 +84,7 @@ Default values work out of the box:
 KAFKA_BROKER=localhost:9092
 KAFKA_TOPIC=crypto_trades
 BINANCE_WS_URL=wss://stream.binance.us:9443/stream?streams=btcusdt@trade/ethusdt@trade/solusdt@trade/bnbusdt@trade/adausdt@trade/xrpusdt@trade
+GRAFANA_ADMIN_PASSWORD=admin
 ```
 
 ---
@@ -110,11 +111,17 @@ pip install -r requirements.txt
 
 **3. Execute the Pipeline Orchestrator**
 
-Run the custom Bash script. It handles everything automatically: detects your Java installation, initializes the Cassandra schema, creates the Kafka topic, uploads the static metadata CSV to HDFS, clears stale checkpoints, and launches both the Binance producer and the Spark Streaming engine:
+Run the custom Bash script. It handles everything automatically: detects your Java installation, waits for Cassandra to be ready, initializes the Cassandra schema, creates the Kafka topic, uploads the static metadata CSV to HDFS, and launches both the Binance producer and the Spark Streaming engine:
 
 ```bash
 chmod +x start_pipeline.sh
 ./start_pipeline.sh
+```
+
+The script resumes from the last committed Kafka offset by default. Pass `--fresh` to wipe Spark checkpoints and start from zero (recommended for demos):
+
+```bash
+./start_pipeline.sh --fresh
 ```
 
 **4. View the Dashboard**
@@ -137,13 +144,13 @@ The **Crypto-Stream Dashboard** loads automatically and begins displaying live d
 docker exec cassandra cqlsh -e "SELECT COUNT(*) FROM cryptopulse.real_time_aggregates;"
 ```
 
-**Clear Spark Checkpoints (if restarting after a Kafka topic reset):**
+**Clear Spark Checkpoints (force a cold start):**
 
 ```bash
-rm -rf /tmp/spark_checkpoints_crypto
+./start_pipeline.sh --fresh
 ```
 
-This is done automatically by `start_pipeline.sh` on every run.
+Checkpoints are preserved across normal restarts so the pipeline resumes from where it left off. Use `--fresh` only when you want to start from zero (e.g., after a Kafka topic reset or for a clean demo).
 
 **Safely Stop the Infrastructure (data remains saved in volumes):**
 
