@@ -128,21 +128,50 @@ The script resumes from the last committed Kafka offset by default. Pass `--fres
 
 Navigate to http://localhost:3000
 
-Login with `admin` / `admin`
+Login with `admin` / `<GRAFANA_ADMIN_PASSWORD from .env>`
 
 The **Crypto-Stream Dashboard** loads automatically and begins displaying live data within 1–2 minutes of pipeline startup.
+
+---
+
+## Scripts Reference
+
+| Script | What it does |
+|---|---|
+| `./start_pipeline.sh` | Start the pipeline, resuming from the last Kafka offset |
+| `./start_pipeline.sh --fresh` | Start from zero (clears Spark checkpoints) |
+| `./stop.sh` | Stop the pipeline processes, leaving Cassandra data intact |
+| `./reset.sh` | Stop + clear Cassandra table + start fresh — one command for a clean demo |
+| `./show_data.sh` | Print a live table view of Cassandra data in the terminal |
+
+---
+
+## Inspecting Cassandra Data
+
+**Quick terminal view:**
+
+```bash
+./show_data.sh
+```
+
+Prints row count, latest aggregates, and any flagged anomalies.
+
+**Connect with DBeaver (or any Cassandra-compatible GUI):**
+
+| Field | Value |
+|---|---|
+| Host | `localhost` |
+| Port | `9042` |
+| Username | `cassandra` |
+| Password | `cassandra` |
+
+Navigate to the `cryptopulse` keyspace → `real_time_aggregates` table. The pipeline just needs to be running — no extra configuration required.
 
 ---
 
 ## Troubleshooting & Operations
 
 **Spark ↔ Kafka Connectivity:** When running Spark locally on the host, use `localhost:9092`. If containerizing the Spark job, use the Docker bridge network DNS: `kafka:29092`.
-
-**Verify Database Records:**
-
-```bash
-docker exec cassandra cqlsh -e "SELECT COUNT(*) FROM cryptopulse.real_time_aggregates;"
-```
 
 **Clear Spark Checkpoints (force a cold start):**
 
@@ -152,16 +181,20 @@ docker exec cassandra cqlsh -e "SELECT COUNT(*) FROM cryptopulse.real_time_aggre
 
 Checkpoints are preserved across normal restarts so the pipeline resumes from where it left off. Use `--fresh` only when you want to start from zero (e.g., after a Kafka topic reset or for a clean demo).
 
-**Safely Stop the Infrastructure (data remains saved in volumes):**
+**Stop the pipeline (Docker infrastructure keeps running):**
+
+```bash
+./stop.sh
+```
+
+**Full demo reset (stop + wipe Cassandra + restart fresh):**
+
+```bash
+./reset.sh
+```
+
+**Safely stop all infrastructure (data remains saved in Docker volumes):**
 
 ```bash
 docker compose stop
-```
-
-**Full Reset (stop containers, wipe Cassandra data, fresh start):**
-
-```bash
-docker compose down
-# Then truncate the table after bringing services back up:
-docker exec cassandra cqlsh -e "TRUNCATE cryptopulse.real_time_aggregates;"
 ```
