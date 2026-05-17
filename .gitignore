@@ -1,0 +1,21 @@
+# Environment & secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Data & volumes
+cassandra_data/
+hadoop_namenode/
+hadoop_datanode/
+data/
+
+# IDE
+.vscode/
+.idea/
