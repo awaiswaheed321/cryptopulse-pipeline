@@ -15,16 +15,18 @@ print(f"{'='*64}")
 # ── Latest 20 rows ───────────────────────────────────────────────────────────
 rows = session.execute("""
     SELECT window_start, symbol, average_price, total_volume,
-           price_swing_pct, is_anomaly
+           price_swing_pct, is_anomaly, asset_name, category
     FROM cryptopulse.real_time_aggregates
     LIMIT 20
 """)
 
-print(f"\n{'Window Start':<22} {'Symbol':<10} {'Avg Price':>12} {'Volume':>10} {'Swing%':>8} {'Anomaly'}")
-print(f"{'-'*22} {'-'*10} {'-'*12} {'-'*10} {'-'*8} {'-'*7}")
+print(f"\n{'Window Start':<22} {'Symbol':<10} {'Avg Price':>12} {'Volume':>10} {'Swing%':>8} {'Anomaly':<8} {'Asset Name':<20} {'Category'}")
+print(f"{'-'*22} {'-'*10} {'-'*12} {'-'*10} {'-'*8} {'-'*8} {'-'*20} {'-'*15}")
 for r in rows:
     flag = '🚨 YES' if r.is_anomaly else 'no'
-    print(f"{str(r.window_start):<22} {r.symbol:<10} {r.average_price:>12.4f} {r.total_volume:>10.5f} {r.price_swing_pct:>7.3f}% {flag}")
+    asset = r.asset_name or 'N/A'
+    cat = r.category or 'N/A'
+    print(f"{str(r.window_start):<22} {r.symbol:<10} {r.average_price:>12.4f} {r.total_volume:>10.5f} {r.price_swing_pct:>7.3f}% {flag:<8} {asset:<20} {cat}")
 
 # ── Anomalies only ───────────────────────────────────────────────────────────
 anomalies = list(session.execute("""

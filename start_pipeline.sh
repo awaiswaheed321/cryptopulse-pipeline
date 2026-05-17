@@ -25,13 +25,16 @@ export SPARK_HOME="$(python3 -c 'import pyspark; import os; print(os.path.dirnam
 export PATH="$SPARK_HOME/bin:$PATH"
 
 echo "Initializing Kafka Topic..."
-docker exec kafka kafka-topics \
-  --create \
-  --if-not-exists \
-  --topic crypto_trades \
-  --bootstrap-server localhost:9092 \
-  --partitions 3 \
-  --replication-factor 1
+python3 -c "
+from kafka.admin import KafkaAdminClient, NewTopic
+from kafka.errors import TopicAlreadyExistsError
+admin = KafkaAdminClient(bootstrap_servers='localhost:9092')
+try:
+    admin.create_topics([NewTopic(name='crypto_trades', num_partitions=3, replication_factor=1)])
+    print('Topic crypto_trades created.')
+except TopicAlreadyExistsError:
+    print('Topic crypto_trades already exists.')
+"
 
 echo "Waiting for Cassandra to be ready..."
 until [ "$(docker inspect --format='{{.State.Health.Status}}' cassandra 2>/dev/null)" = "healthy" ]; do
@@ -41,7 +44,18 @@ done
 echo "Cassandra is ready."
 
 echo "Initializing Cassandra Schema..."
-docker exec -i cassandra cqlsh < src/cassandra/schema.cql
+python3 -c "
+from cassandra.cluster import Cluster
+session = Cluster(['127.0.0.1'], port=9042).connect()
+session.execute(\"CREATE KEYSPACE IF NOT EXISTS cryptopulse WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}\")
+session.execute('USE cryptopulse')
+session.execute('''CREATE TABLE IF NOT EXISTS real_time_aggregates (
+    window_start timestamp, window_end timestamp, symbol text,
+    average_price double, total_volume double, high_price double,
+    low_price double, price_swing_pct double, is_anomaly boolean,
+    asset_name text, category text, PRIMARY KEY (window_start, symbol))''')
+print('Cassandra schema ready.')
+"
 
 echo "Uploading metadata CSV to HDFS..."
 docker cp data/crypto_metadata.csv namenode:/tmp/crypto_metadata.csv
