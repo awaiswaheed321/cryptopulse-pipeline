@@ -132,6 +132,20 @@ Login with `admin` / `<GRAFANA_ADMIN_PASSWORD from .env>`
 
 The **Crypto-Stream Dashboard** loads automatically and begins displaying live data within 1–2 minutes of pipeline startup.
 
+**5. View Prometheus Metrics**
+
+Navigate to http://localhost:9090
+
+- Use the **Graph** tab to run PromQL queries against scraped metrics
+- Use **Status → Targets** to verify which services are being actively scraped
+
+To connect Prometheus as a Grafana data source (for custom dashboards):
+
+1. In Grafana, go to **Connections → Data Sources → Add data source**
+2. Select **Prometheus**
+3. Set the URL to `http://prometheus:9090` (use the container name, not `localhost`, since both run on `big-data-net`)
+4. Click **Save & Test**
+
 ---
 
 ## Scripts Reference
